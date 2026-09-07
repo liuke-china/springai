@@ -62,9 +62,11 @@ CREATE EXTENSION IF NOT EXISTS vector;
 项目**不含任何明文密钥**。复制示例文件并填入你的 Key：
 
 ```bash
-cp .env.example .env
-# 编辑 .env，至少填 MINIMAX_API_KEY=你的Key
+cp secrets.properties.example secrets.properties
+# 编辑 secrets.properties，至少填 MINIMAX_API_KEY=你的Key
 ```
+
+> 密钥放 `secrets.properties`（已被 `.gitignore` 忽略，不会进 GitHub），由 `application.yml` 的 `spring.config.import` 引入，**无需 `export`、无需额外依赖**。Spring Boot 本身不读 `.env` 文件，所以本项目用 `.properties` 格式承载密钥。
 
 | 环境变量 | 必填 | 默认值 | 说明 |
 |---|---|---|---|
@@ -100,7 +102,7 @@ mvn spring-boot:run
 ## 常见问题（排错）
 
 **Q：启动直接失败，报 `OpenAI API key must be set` 或 `EmbeddingConfig: MiniMax embedding 需要 api-key`？**
-A：忘了配 `MINIMAX_API_KEY`。本项目密钥全外部化，不在代码里。按"快速开始 → 3. 配置环境变量"把 `.env.example` 复制成 `.env` 并填入你的 Key 即可（Spring Boot 3.2+ 会自动加载根目录 `.env`，无需 `export`）。注意此 Key 是 **Chat 与 Embedding 共用**的必填项，没有它就起不来。
+A：忘了配 `MINIMAX_API_KEY`。本项目密钥全外部化，不在代码里。按"快速开始 → 3. 配置环境变量"把 `secrets.properties.example` 复制成 `secrets.properties` 并填入你的 Key 即可（由 `spring.config.import` 引入，无需 `export`）。注意此 Key 是 **Chat 与 Embedding 共用**的必填项，没有它就起不来。
 
 **Q：接口返回 400 Bad Request（Tomcat 默认错误页）？**
 A：URL 里带了 Tomcat 默认拒绝的字符（如 `{}` `[]` `|` `<>`）。本项目已通过 `server.tomcat.relaxed-query-chars` 放行这些字符，正常浏览器调用没问题；但用 `curl` 测时要注意：①空格必须写成 `%20`；②`{}` 会被 curl 当成通配符，需加 `-g` 关闭 glob，或用 `--data-urlencode` 自动编码：

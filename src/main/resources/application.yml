@@ -17,6 +17,10 @@ spring:
       - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration  # 关掉 Spring Security 默认"内存用户+随机密码"，本项目用 API Key 鉴权，不需要默认账号
   application:
     name: spring-ai-demo
+  config:
+    # 引入本地密钥文件（secrets.properties 已被 .gitignore 忽略，不会进 GitHub）
+    # 所有 API Key / 密码放这里，application.yml 只保留 ${ENV} 占位
+    import: optional:file:./secrets.properties
 
   # PostgreSQL 数据源配置
   datasource:
@@ -44,7 +48,7 @@ spring:
     openai:
       # MiniMax M3 通过 OpenAI 兼容协议接入；api-key 走环境变量 MINIMAX_API_KEY（Chat 与 Embedding 共用）。
       # 默认值留空：未配置时解析为空串，会触发 EmbeddingConfig 的友好报错（而非晦涩的占位符异常）。
-      # 最省事的配置方式：把根目录 .env.example 复制为 .env 并填入你的 key（Spring Boot 3.2+ 会自动加载 .env，无需 export）。
+      # 配置方式：把根目录 secrets.properties.example 复制为 secrets.properties 并填入你的 key（由下方 spring.config.import 引入，无需 export）。
       api-key: ${MINIMAX_API_KEY:}
       base-url: https://api.minimax.chat
       chat:
