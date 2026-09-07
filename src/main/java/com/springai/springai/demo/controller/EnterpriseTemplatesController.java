@@ -21,6 +21,11 @@ import java.util.Map;
  * 5. 内容审核 - 审核内容是否违规
  * 6. 文本分类 - 文本归类
  * 7. JSON 提取 - 提取信息并输出 JSON
+ *
+ * 【Postman 对应】
+ * 集合：Spring AI Full API.postman_collection.json（桌面）
+ * 分组：「8. 提示词模板」→ sql / code-explain / analysis / customer / moderation / classify / json-extract 共 7 个接口
+ * （7 个模板 Bean 全部定义在 PromptTemplateConfig，本类只负责注入和调用）
  */
 @RestController
 @RequestMapping("/ai/enterprise")
@@ -55,8 +60,12 @@ public class EnterpriseTemplatesController {
     }
 
     /**
-     * 1. SQL 生成
-     * 测试：GET /ai/enterprise/sql
+     * 1. SQL 生成：表结构 DDL + 需求 → 指定方言的 SQL
+     * Postman：分组「8. 提示词模板」→ sql
+     * 示例请求：GET /ai/enterprise/sql?question=查询用户表&dbType=PostgreSQL
+     *          （tableSchema/requirement 不传走默认值；Postman 用的是 question 参数，实际生效的是默认 requirement）
+     *
+     * 场景：给 DBA 或后端用的 SQL 生成器，{dbType} 切换方言
      */
     @GetMapping("/sql")
     public String sqlGenerator(
@@ -74,8 +83,12 @@ public class EnterpriseTemplatesController {
     }
 
     /**
-     * 2. 代码解释
-     * 测试：GET /ai/enterprise/code-explain
+     * 2. 代码解释：代码片段 → 功能讲解
+     * Postman：分组「8. 提示词模板」→ code-explain
+     * 示例请求：GET /ai/enterprise/code-explain?code=public void test(){}
+     *          （code 不传走默认的用户仓库查询类示例）
+     *
+     * 用途：新人看老代码、Code Review 辅助；注意 code 参数含特殊字符时 URL 要编码
      */
     @GetMapping("/code-explain")
     public String codeExplainer(
@@ -91,8 +104,12 @@ public class EnterpriseTemplatesController {
     }
 
     /**
-     * 3. 数据分析报告
-     * 测试：GET /ai/enterprise/analysis
+     * 3. 数据分析：原始数据 + 维度 → 结构化分析报告
+     * Postman：分组「8. 提示词模板」→ analysis
+     * 示例请求：GET /ai/enterprise/analysis?code=public class A{}
+     *          （Postman 里误带了 code 参数，实际走默认 data/dimensions；正确参数是 data 和 dimensions）
+     *
+     * 关键点：{length} 控制报告字数；这是 GET 接口传长数据的反面示例——大数据量应改 POST
      */
     @GetMapping("/analysis")
     public String dataAnalysis(
@@ -110,8 +127,12 @@ public class EnterpriseTemplatesController {
     }
 
     /**
-     * 4. 客服自动回复
-     * 测试：GET /ai/enterprise/customer
+     * 4. 客服回复：公司 + 产品信息 + 用户问题 → 客服话术
+     * Postman：分组「8. 提示词模板」→ customer
+     * 示例请求：GET /ai/enterprise/customer?question=怎么退货
+     *          （其余参数不传走默认值；{context} 可传上一轮对话做多轮客服）
+     *
+     * 场景：智能客服原型，productInfo 决定 AI 回答的知识边界
      */
     @GetMapping("/customer")
     public String customerService(
@@ -133,8 +154,11 @@ public class EnterpriseTemplatesController {
     }
 
     /**
-     * 5. 内容审核
-     * 测试：GET /ai/enterprise/moderation
+     * 5. 内容审核：判断内容是否违规
+     * Postman：分组「8. 提示词模板」→ moderation
+     * 示例请求：GET /ai/enterprise/moderation?text=这是一个测试
+     *
+     * 用途：UGC 发布前的合规拦截（评论区/帖子），正常文本返回通过，违禁内容返回违规原因
      */
     @GetMapping("/moderation")
     public String contentModeration(
@@ -147,8 +171,11 @@ public class EnterpriseTemplatesController {
     }
 
     /**
-     * 6. 文本分类
-     * 测试：GET /ai/enterprise/classify
+     * 6. 文本分类：把文本归到指定类别列表中的一个
+     * Postman：分组「8. 提示词模板」→ classify
+     * 示例请求：GET /ai/enterprise/classify?text=Samsung手机&categories=手机,电脑,服装
+     *
+     * 场景：工单自动分派、内容打标；{categories} 动态传入，同一模板适配不同业务分类体系
      */
     @GetMapping("/classify")
     public String textClassifier(
@@ -164,8 +191,12 @@ public class EnterpriseTemplatesController {
     }
 
     /**
-     * 7. JSON 结构化输出
-     * 测试：GET /ai/enterprise/json-extract
+     * 7. JSON 提取：自由文本 → JSON 字符串
+     * Postman：分组「8. 提示词模板」→ json-extract
+     * 示例请求：GET /ai/enterprise/json-extract?text=苹果5个橘子3个
+     *          （默认值示例含姓名/电话/邮箱，是信息抽取的典型测试数据）
+     *
+     * 关键点：返回的是 JSON 字符串（String）而非 Java 对象，与 StructuredOutputController 的 entity() 形成对照
      */
     @GetMapping("/json-extract")
     public String jsonOutput(

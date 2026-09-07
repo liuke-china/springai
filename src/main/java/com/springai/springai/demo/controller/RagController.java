@@ -8,6 +8,7 @@ import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -17,13 +18,18 @@ import java.util.*;
 
 /**
  * RAG（检索增强生成）控制器 - 简化版
+ *
  * 【什么是 RAG】
  * RAG = Retrieval Augmented Generation（检索增强生成）
  * 核心：先检索相关文档，再让 AI 基于文档回答，避免 AI 瞎编
  *
  * 【工作流程】
- * 1. 文档上传 → 分割成小块 → 向量化 → 存入向量库
+ * 1. 文档上传 → 分割成小块 → 向量化 → 存入向量库（本类：chat_document 表）
  * 2. 用户提问 → 向量化 → 检索相似文档 → AI 基于文档回答
+ *
+ * 【Postman 对应】
+ * 集合：Spring AI Full API.postman_collection.json（桌面）
+ * 分组：「6 RAG」→ init-demo / upload / add-text / query / stats 共 5 个接口
  */
 @RestController
 @RequestMapping("/ai/rag")
@@ -32,17 +38,20 @@ public class RagController {
     private final ChatClient chatClient;
     private final EmbeddingModel embeddingModel;
     private final VectorStore vectorStore;
+    private final JdbcTemplate jdbcTemplate;
 
     @Value("${rag.document.path:./documents}")
     private String documentPath;
 
     public RagController(ChatClient.Builder chatClientBuilder,
                          EmbeddingModel embeddingModel,
-                         @Qualifier("chatRagVectorStore") VectorStore vectorStore) {
+                         @Qualifier("chatRagVectorStore") VectorStore vectorStore,
+                         JdbcTemplate jdbcTemplate) {
         this.chatClient = chatClientBuilder.build();
         this.embeddingModel = embeddingModel;
         // 知识库存进 PostgreSQL 的 chat_document 表（PgVectorStore Bean，重启不丢）
         this.vectorStore = vectorStore;
+        this.jdbcTemplate = jdbcTemplate;
 
         // 创建文档目录
         try {
@@ -54,8 +63,14 @@ public class RagController {
 
 
     // ==================== 1. 初始化演示知识库 ====================
-    /*
-     * 测试：POST /ai/rag/init-demo盘
+
+    /**
+     * 演示：一键灌入 6 条公司制度文本（年假/加班/病假/IMS功能/技术支持/办公时间）
+     * Postman：分组「6 RAG」→ init-demo
+     * 示例请求：POST /ai/rag/init-demo（无入参）
+     *
+     * 流程：6 条文本 → 每条按 500 字符分块（splitText）→ 向量化存入 chat_document 表
+     * 场景：测 /ai/rag/query 前必须先调这个（或 upload / add-text）灌数据，否则检索为空
      */
     @PostMapping("/init-demo")
     public Map<String, Object> initDemo() {
@@ -91,9 +106,15 @@ public class RagController {
     }
 
     // ==================== 2. 上传文档到知识库 ====================
-    /*
-     * 测试：POST /ai/rag/upload
-     * Form-Data: file=xxx.txt, knowledgeBase=company
+
+    /**
+     * 演示：上传 .txt 文件作为知识库文档（真实文件入库）
+     * Postman：分组「6 RAG」→ upload
+     * 示例请求：POST /ai/rag/upload（form-data）
+     *          file=选一个 .txt 文件，knowledgeBase=company（不传默认 default）
+     *
+     * 流程：读文件内容 → 按 500 字符分块 → 每块 metadata 带 knowledgeBase/source → 向量化入库
+     * 注意：只支持 .txt，其他后缀直接返回失败，不走 AI 调用
      */
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public Map<String, Object> uploadDocument(
@@ -133,10 +154,15 @@ public class RagController {
     }
 
     // ==================== 3. 添加纯文本到知识库 ====================
-    /*
-     * <p>
-     * 测试：POST /ai/rag/add-text
-     * Body: {"text":"公司规定：年假5天","knowledgeBase":"hr"}
+
+    /**
+     * 演示：不走文件，直接把一段文本塞进知识库（最快的手工灌数据方式）
+     * Postman：分组「6 RAG」→ add-text
+     * 示例请求：POST /ai/rag/add-text
+     *          Body: {"text":"公司规定：年假5天","knowledgeBase":"hr"}
+     *
+     * 流程：取 text → 按 500 字符分块 → 向量化入库（source 固定记为 manual）
+     * 用途：补充单条制度/FAQ，比 upload 轻，适合测试检索命中
      */
     @PostMapping("/add-text")
     public Map<String, Object> addText(@RequestBody Map<String, String> request) {
@@ -167,11 +193,18 @@ public class RagController {
         return result;
     }
 
+    // ==================== 4. RAG 问答 ====================
+
     /**
-     * RAG 问答
-     * <p>
-     * 测试：POST /ai/rag/query
-     * Body: {"question":"年假多少天？"}
+     * 演示：RAG 主流程——先检索再回答，这是整个 RAG 的核心接口
+     * Postman：分组「6 RAG」→ query
+     * 示例请求：POST /ai/rag/query
+     *          Body: {"question":"年假多少天？"}
+     *          （init-demo 灌入的年假制度命中后，回答会带出"满1年不满10年年假5天"）
+     *
+     * 流程：问题向量化 → chat_document 检索 top3 → 拼【参考文档】上下文 → AI 接地回答
+     * 注意：检索为空时直接返回"知识库中没有找到相关内容"，不调 AI（省 token）
+     *      检索到内容时，Prompt 明确要求"文档没有就明说"，防止模型自由发挥
      */
     @PostMapping("/query")
     public Map<String, Object> query(@RequestBody Map<String, String> request) {

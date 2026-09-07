@@ -24,6 +24,11 @@ import java.util.Map;
  * 1. .entity(Class)           -> 返回单个 Java 对象
  * 2. .entity(new TypeRef<>()） -> 返回嵌套/集合类型
  * 3. .entities(Class)         -> 返回 List<Class>（多个对象）
+ *
+ * 【Postman 对应】
+ * 集合：Spring AI Full API.postman_collection.json（桌面）
+ * 分组：「7. Structured Output」→ extract / sql / analysis / sql-batch 共 4 个接口
+ * （/ai/structured/entities 本类有实现，Postman 集合里没有对应条目）
  */
 @RestController
 @RequestMapping("/ai/structured")
@@ -38,10 +43,12 @@ public class StructuredOutputController {
     // ==================== 1. 基础：单对象映射 ====================
 
     /**
-     * 从自然语言中提取结构化信息
-     * GET /ai/structured/extract?text=张三今天花了350元买了一台联想笔记本
+     * 演示：自然语言 → Java 对象（.entity(Class) 最基础用法）
+     * Postman：分组「7. Structured Output」→ extract
+     * 示例请求：GET /ai/structured/extract?text=张三购买MAC笔记本花费9999元（Postman 里的写法）
      *
-     * 输入自然语言，AI 提取为 ExpenseInfo 对象
+     * 流程：system 要求只返回 JSON → user 文本 → entity(ExpenseInfo.class) 自动反序列化
+     * 返回：ExpenseInfo（姓名/金额/商品等消费字段），可直接当 Java 对象用
      */
     @GetMapping("/extract")
     public ExpenseInfo extract(@RequestParam String text) {
@@ -55,16 +62,15 @@ public class StructuredOutputController {
     // ==================== 2. 核心：Text-to-SQL 结构化输出 ====================
 
     /**
-     * Text-to-SQL：根据表结构和需求生成 SQL（返回结构化对象）
-     * POST /ai/structured/sql
-     * Body: {"tableSchema":"表结构DDL","requirement":"查询需求"}
+     * 演示：Text-to-SQL 结构化输出——单表简单查询，看 riskLevel 会给 SAFE
+     * Postman：分组「7. Structured Output」→ sql
+     * 示例请求：POST /ai/structured/sql
+     *          Body: {"tableSchema":"CREATE TABLE device (id BIGINT PRIMARY KEY, device_code VARCHAR(64), status SMALLINT);",
+     *                 "requirement":"查询所有运行中(status=1)的设备"}
      *
-     * 返回 SqlResult 对象，包含：
-     * - sql: 生成的 SQL 语句
-     * - explanation: SQL 的中文解释
-     * - tables: 涉及的表名列表
-     * - riskLevel: 风险等级（SAFE/WARNING/DANGEROUS）
-     * - riskNote: 风险说明
+     * 流程：表结构 DDL + 需求拼进 Prompt → 要求严格返回 5 字段 JSON → entity(SqlResult.class) 反序列化
+     * 返回 SqlResult：sql / explanation / tables / riskLevel（SAFE/WARNING/DANGEROUS）/ riskNote
+     * 关键点：Prompt 硬性规则"只生成 SELECT + 强制 LIMIT"，这是结构化输出承载业务约束的例子
      */
     @PostMapping("/sql")
     public SqlResult textToSql(@RequestBody Map<String, String> request) {
@@ -105,11 +111,13 @@ public class StructuredOutputController {
     // ==================== 3. 进阶：嵌套对象输出 ====================
 
     /**
-     * 生成数据分析报告（嵌套结构）
-     * POST /ai/structured/analysis
-     * Body: {"data":"原始数据","dimensions":"分析维度，逗号分隔"}
+     * 演示：嵌套对象结构化输出（对象里套 List<DimensionResult>）
+     * Postman：分组「7. Structured Output」→ analysis
+     * 示例请求：POST /ai/structured/analysis
+     *          Body: {"data":"1号车间稼动率82%；2号车间91%；3号车间47%（8月12-15日停机4天）",
+     *                 "dimensions":"总体趋势,异常车间,停机影响,改进建议"}
      *
-     * 返回 AnalysisResult 对象，包含嵌套的 List<DimensionResult>
+     * 关键点：嵌套结构要用 ParameterizedTypeReference / 嵌套 DTO 承接，数据里埋异常点能看出 score 评分是真的
      */
     @PostMapping("/analysis")
     public AnalysisResult analysis(@RequestBody Map<String, String> request) {
@@ -147,10 +155,11 @@ public class StructuredOutputController {
     // ==================== 4. 高级：返回 List 对象 ====================
 
     /**
-     * 从文本中提取多个实体（返回列表）
-     * GET /ai/structured/entities?text=张三和李四去北京出差，预算5000元，住3天酒店
+     * 演示：返回 JSON 数组 → List<ExtractedEntity>（泛型集合反序列化）
+     * 示例请求：GET /ai/structured/entities?text=张三和李四去北京出差，预算5000元，住3天酒店
      *
-     * 返回 List<ExtractedEntity>，每个实体包含 type、value、description
+     * 关键点：List 泛型必须用 ParameterizedTypeReference 承接，直接 List.class 会丢泛型
+     * 注意：Postman 集合「7. Structured Output」分组没有这个条目，需手动新建 GET 请求测
      */
     @GetMapping("/entities")
     public List<ExtractedEntity> entities(@RequestParam String text) {
@@ -164,11 +173,14 @@ public class StructuredOutputController {
     // ==================== 5. 实战：批量 SQL 生成（List 结构化输出） ====================
 
     /**
-     * 批量生成 SQL（返回 List<SqlResult>）
-     * POST /ai/structured/sql-batch
-     * Body: {"tableSchema":"表结构DDL","requirements":["需求1","需求2","需求3"]}
+     * 演示：批量 SQL 生成——List<SqlResult> 结构化输出（一次需求列表出多条 SQL）
+     * Postman：分组「7. Structured Output」→ sql-batch
+     * 示例请求：POST /ai/structured/sql-batch
+     *          Body: {"tableSchema":"CREATE TABLE device (...); CREATE TABLE device_operation_report (...);",
+     *                 "requirements":["查询运行中设备","统计每车间设备数","8月产量Top10"]}
      *
-     * 企业场景：项目经理一次提多个数据需求，AI 批量生成 SQL
+     * 流程：requirements 逐条编号拼进 Prompt → 要求返回 JSON 数组 → List<SqlResult> 反序列化
+     * 关键点：数组顺序与需求列表一一对应；测试时三个需求按"单表→聚合→JOIN"递进，riskLevel 会从 SAFE 到 WARNING
      */
     @PostMapping("/sql-batch")
     public List<SqlResult> sqlBatch(@RequestBody Map<String, Object> request) {

@@ -23,6 +23,9 @@ import org.springframework.web.bind.annotation.RestController;
  *   1. 用户提问 → 2. AI 判断是否需要调用工具 → 3. AI 生成工具调用请求
  *   → 4. Spring AI 自动执行工具方法 → 5. 将结果返回给 AI → 6. AI 生成最终回答
  *
+ * 【Postman 对应】
+ * 集合：Spring AI Full API.postman_collection.json（桌面）
+ * 分组：「3. AI工具」→ time / weather / multi / role / email 共 5 个接口，顺序与本类编号一致
  */
 @RestController
 public class AiToolController {
@@ -38,6 +41,7 @@ public class AiToolController {
 
 
     // ==================== 1. 单工具调用：获取当前时间 ====================
+    // Postman：分组「3. AI工具」→ time
 
     /**
      * 演示：AI 自动调用 DateTimeTools 获取当前时间
@@ -61,6 +65,7 @@ public class AiToolController {
     }
 
     // ==================== 2. 单工具调用：查询天气 ====================
+    // Postman：分组「3. AI工具」→ weather
 
     /**
      * 演示：AI 自动调用 WeatherTools 查询天气
@@ -83,6 +88,7 @@ public class AiToolController {
     }
 
     // ==================== 3. 多工具组合调用 ====================
+    // Postman：分组「3. AI工具」→ multi
 
     /**
      * 演示：AI 同时使用多个工具完成复杂任务
@@ -100,6 +106,7 @@ public class AiToolController {
     }
 
     // ==================== 4. 带系统角色的工具调用 ====================
+    // Postman：分组「3. AI工具」→ role
 
     /**
      * 演示：系统角色 + 工具调用组合
@@ -121,6 +128,7 @@ public class AiToolController {
 
 
     // ==================== 5. 外部工具：发送邮件 ====================
+    // Postman：分组「3. AI工具」→ email（Postman 里收件人用的 2369860456@qq.com）
 
     /**
      * 演示：AI 调用邮件服务

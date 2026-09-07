@@ -11,6 +11,10 @@ import reactor.core.publisher.Flux;
 /**
  * Spring AI Alibaba 演示控制器
  * 包含：ChatClient 最常用方法演示
+ *
+ * 【Postman 对应】
+ * 集合：Spring AI Full API.postman_collection.json（桌面）
+ * 分组：「1. 调用AI」→ basic / stream / response / role / entity / stream/role 共 6 个接口，顺序与本类编号一致
  */
 @RestController
 public class BasicAiController {
@@ -22,6 +26,7 @@ public class BasicAiController {
     }
 
     // ==================== 1. 同步单次对话 ====================
+    // Postman：分组「1. 调用AI」→ basic
     /**
      * 功能：发送用户消息，等待完整回复后一次性返回
      * 入参差异：
@@ -37,6 +42,7 @@ public class BasicAiController {
     }
 
     // ==================== 2. 流式输出（高频场景） ====================
+    // Postman：分组「1. 调用AI」→ stream
     /**
      * 功能：逐 token 流式返回，适合实时交互场景
      * 关键点：
@@ -53,6 +59,7 @@ public class BasicAiController {
     }
 
     // ==================== 3. 获取完整响应对象 ====================
+    // Postman：分组「1. 调用AI」→ response
     /**
      * 功能：获取包含元数据的完整 ChatResponse
      * 适用场景：
@@ -69,6 +76,7 @@ public class BasicAiController {
     }
 
     // ==================== 4. 系统角色定制 ====================
+    // Postman：分组「1. 调用AI」→ role
     /**
      * 功能：通过 system() 设置 AI 人设
      * 入参差异：
@@ -87,6 +95,7 @@ public class BasicAiController {
     }
 
     // ==================== 5. 结构化输出（实体映射） ====================
+    // Postman：分组「1. 调用AI」→ entity
     /**
      * 功能：将 AI 回复直接转为 Java 对象
      * 注意：
@@ -106,6 +115,7 @@ public class BasicAiController {
     }
 
     // ==================== 6. 流式 + 系统角色组合 ====================
+    // Postman：分组「1. 调用AI」→ stream/role
     /**
      * 功能：流式输出 + 人设定制
      * 典型场景：带角色的实时聊天机器人

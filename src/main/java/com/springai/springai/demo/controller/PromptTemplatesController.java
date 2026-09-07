@@ -24,6 +24,11 @@ import java.util.Map;
  * 【与普通字符串的区别】
  * 普通字符串：String prompt = "天气如何";
  * 模板字符串：String prompt = "请告诉我{city}的天气";
+ *
+ * 【Postman 对应】
+ * 集合：Spring AI Full API.postman_collection.json（桌面）
+ * 分组：「2. 提示词模板」→ basic / multi / default / list / system / stream / bean / summary / email-bean / if 共 10 个接口
+ *      1-6 是"每次新建模板"的用法，7-9（bean/summary/email-bean）是"注入 @Bean 预定义模板"的推荐用法
  */
 @RestController
 @RequestMapping("/ai/template")
@@ -47,8 +52,12 @@ public class PromptTemplatesController {
 
     // ==================== 1. 基础模板：单参数替换 ====================
     /**
-     * 功能：最基础的模板使用，将 {参数名} 替换为实际值
-     * 测试：GET /ai/template/basic?city=北京
+     * 演示：最基础的模板用法——{参数名} 占位符替换
+     * Postman：分组「2. 提示词模板」→ basic
+     * 示例请求：GET /ai/template/basic?city=北京
+     *
+     * 流程：模板 "{city}的天气" → create(Map.of("city", city)) 替换占位符 → 发给 AI
+     * 场景：所有模板的起点，先看懂这个再看后面的多参数/Bean 版本
      */
     @GetMapping("/basic")
     public String basicTemplate(@RequestParam(defaultValue = "北京") String city) {
@@ -66,8 +75,11 @@ public class PromptTemplatesController {
 
     // ==================== 2. 多参数模板 ====================
     /**
-     * 功能：一个模板支持多个占位符
-     * 测试：GET /ai/template/multi?name=小明&language=中文
+     * 演示：一个模板里放多个占位符，一次 Map 全部替换
+     * Postman：分组「2. 提示词模板」→ multi
+     * 示例请求：GET /ai/template/multi?name=小明&languageType=中文&language=今天天气真好
+     *
+     * 关键点：Map 的 key 必须和占位符名一一对应，少传会抛错
      */
     @GetMapping("/multi")
     public String multiParams(@RequestParam(defaultValue = "小明") String name,
@@ -91,9 +103,12 @@ public class PromptTemplatesController {
 
     // ==================== 3. 条件默认值（手动处理） ====================
     /**
-     * 功能：用程序逻辑处理默认值（更稳定）
-     * 测试：GET /ai/template/default
-     *       GET /ai/template/default?style=严肃
+     * 演示：参数缺省时用程序逻辑给默认值（比模板自带默认值语法更稳）
+     * Postman：分组「2. 提示词模板」→ default
+     * 示例请求：GET /ai/template/default（不传 style → "友好的"）
+     *          GET /ai/template/default?style=严肃
+     *
+     * 场景：对外接口参数可省略时的标准处理方式
      */
     @GetMapping("/default")
     public String withDefaultValue(@RequestParam(required = false) String style) {
@@ -113,9 +128,11 @@ public class PromptTemplatesController {
 
     // ==================== 4. List 参数（循环展开） ====================
     /**
-     * 功能：List 类型参数会被自动循环展开
-     * 例如：items=["苹果","香蕉"] 会变成 "苹果、香蕉"
-     * 测试：GET /ai/template/list?items=苹果,香蕉,橙子
+     * 演示：List 类型参数自动循环展开成"苹果、香蕉、橙子"
+     * Postman：分组「2. 提示词模板」→ list
+     * 示例请求：GET /ai/template/list?items=苹果,香蕉,橙子
+     *
+     * 关键点：逗号分隔的入参先 split 成 List 再传给模板；同时演示模板 + 流式输出组合
      */
     @GetMapping("/list")
     public Flux<String> listParam(@RequestParam(defaultValue = "苹果,香蕉,橙子") String items) {
@@ -134,9 +151,12 @@ public class PromptTemplatesController {
 
     // ==================== 5. 系统模板（SystemPromptTemplate） ====================
     /**
-     * 功能：分离系统指令和用户输入，便于管理
-     * SystemPromptTemplate：专门用于系统角色模板
-     * 测试：GET /ai/template/system?job=律师&language=英文
+     * 演示：SystemPromptTemplate 与 PromptTemplate 分离——系统人设和用户输入各管各的
+     * Postman：分组「2. 提示词模板」→ system
+     * 示例请求：GET /ai/template/system?job=律师&language=英文
+     *
+     * 流程：system 模板（角色）+ user 模板（问题）→ 组装成一个 Prompt → 调 AI
+     * 场景：人设固定、问题多变的业务（客服/翻译）都用这种分离写法
      */
     @GetMapping("/system")
     public String systemTemplate(@RequestParam(defaultValue = "律师") String job,
@@ -162,8 +182,11 @@ public class PromptTemplatesController {
 
     // ==================== 6. 模板 + 流式输出 ====================
     /**
-     * 功能：模板配合流式输出，实时展示
-     * 测试：GET /ai/template/stream?topic=Java
+     * 演示：模板 + 流式输出组合（模板生成 prompt 后走 stream）
+     * Postman：分组「2. 提示词模板」→ stream
+     * 示例请求：GET /ai/template/stream?topic=Java
+     *
+     * 注意：返回 Flux<String>，produces 必须是 text/event-stream
      */
     @GetMapping(value = "/stream", produces = "text/event-stream;charset=UTF-8")
     public Flux<String> streamTemplate(@RequestParam(defaultValue = "Java") String topic) {
@@ -180,9 +203,12 @@ public class PromptTemplatesController {
 
     // ==================== 7. 预定义模板 Bean（推荐方式） ====================
     /**
-     * 功能：注入 @Bean translatorTemplate 定义的模板（推荐方式）
-     * 优点：启动时加载，避免每次创建，集中管理
-     * 测试：GET /ai/template/bean?text=Hello&language=中文
+     * 演示：注入 @Bean 预定义模板 translatorTemplate（企业推荐方式）
+     * Postman：分组「2. 提示词模板」→ bean
+     * 示例请求：GET /ai/template/bean?text=Hello&language=中文
+     *
+     * 优点：模板集中管理（改提示词不用动 Controller 代码）、启动时加载
+     * 场景：模板来源是 PromptTemplateConfig 里的 @Bean，与前面"每次 new"形成对照
      */
     @GetMapping("/bean")
     public String beanTemplate(
@@ -202,8 +228,12 @@ public class PromptTemplatesController {
 
     // ==================== 8. Bean 模板：摘要生成 ====================
     /**
-     * 功能：使用 summarizerTemplate Bean
-     * 测试：GET /ai/template/summary?length=30
+     * 演示：注入 summarizerTemplate Bean 做摘要生成
+     * Postman：分组「2. 提示词模板」→ summary
+     * 示例请求：GET /ai/template/summary?length=30
+     *          （content 不传有默认长文，length 控制摘要字数）
+     *
+     * 用途：长文本压缩摘要，模板里 {length} 和 {content} 双占位符
      */
     @GetMapping("/summary")
     public String summaryTemplate(
@@ -222,8 +252,11 @@ public class PromptTemplatesController {
 
     // ==================== 9. Bean 模板：邮件生成 ====================
     /**
-     * 功能：使用 emailTemplate Bean
-     * 测试：GET /ai/template/email-bean?to=张三&subject=项目汇报&points=本周完成XXX&tone=正式
+     * 演示：注入 emailTemplate Bean 生成商务邮件（4 个占位符）
+     * Postman：分组「2. 提示词模板」→ email-bean
+     * 示例请求：GET /ai/template/email-bean?to=张三&subject=项目汇报&points=本周完成XXX&tone=正式
+     *
+     * 场景：工作周报/通知邮件自动生成，4 个参数全部可省略走默认值
      */
     @GetMapping("/email-bean")
     public String emailBeanTemplate(
@@ -246,9 +279,12 @@ public class PromptTemplatesController {
 
     // ==================== 10. 条件逻辑模板（IF 语句） ====================
     /**
-     * 功能：模板中使用 #if 判断条件
-     * 测试：GET /ai/template/if?mood=happy
-     *       GET /ai/template/if?mood=sad
+     * 演示：模板里用 #if/#else/#end 做条件分支（Velocity 语法）
+     * Postman：分组「2. 提示词模板」→ if
+     * 示例请求：GET /ai/template/if?mood=我操（Postman 里填的这个，走 #else 安抚分支）
+     *          GET /ai/template/if?mood=happy（走 #if 鼓励分支）
+     *
+     * 关键点：条件逻辑在模板层完成，不同参数生成不同 prompt，不用写 Java if-else
      */
     @GetMapping("/if")
     public String ifCondition(@RequestParam(defaultValue = "很好") String mood) {

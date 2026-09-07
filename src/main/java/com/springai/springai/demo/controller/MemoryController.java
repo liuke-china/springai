@@ -23,8 +23,15 @@ import java.util.Map;
 
 /**
  * Spring AI 记忆演示
- *   1) 内存记忆（InMemoryChatMemoryRepository）：重启项目历史即丢，作对照
- *   2) PG 向量库记忆：聊天记录存进 PostgreSQL 向量表，重启不丢，可从 PG 拿回
+ *
+ * 【两套记忆对照】
+ * 1) 内存记忆（InMemoryChatMemoryRepository）：重启项目历史即丢，作对照
+ * 2) PG 向量库记忆：聊天记录存进 PostgreSQL 向量表，重启不丢，可从 PG 拿回
+ *
+ * 【Postman 对应】
+ * 集合：Spring AI Full API.postman_collection.json（桌面）
+ * 分组：「4. 会话记忆」共 7 个接口，按 memory（内存）→ pgmemory（PG 持久）两段排列
+ *      记忆效果测法：chat 传同一 conversationId 先说"我叫小明"再问"我叫什么"
  */
 @RestController
 public class MemoryController {
@@ -48,11 +55,16 @@ public class MemoryController {
         this.vectorStore = vectorStore;
     }
 
-    // ==================== 1. 内存记忆（重启即丢） ====================
+    // ==================== 1. 内存记忆：多轮对话 ====================
+
     /**
-     * 多轮对话，传相同 conversationId 即可记忆
-     * 注意：记忆存在 JVM 内存，重启项目历史就没了
-     * 测试：/ai/memory/chat?conversationId=demo&prompt=我叫小明  →  /ai/memory/chat?conversationId=demo&prompt=我叫什么
+     * 演示：官方 Advisor 方式挂记忆——传相同 conversationId 即可续上对话
+     * Postman：分组「4. 会话记忆」→ memory/chat
+     * 示例请求：GET /ai/memory/chat?conversationId=demo&prompt=我叫小明
+     *          再调 GET /ai/memory/chat?conversationId=demo&prompt=我叫什么 → AI 能答出"小明"
+     *
+     * 流程：MessageChatMemoryAdvisor 在请求前按 conversationId 取窗口内历史拼进 prompt
+     * 注意：记忆存在 JVM 内存（InMemoryChatMemoryRepository），重启项目历史就没了
      */
     @GetMapping("/ai/memory/chat")
     public String inMemoryChat(@RequestParam String prompt,
@@ -63,18 +75,26 @@ public class MemoryController {
                 .content();
     }
 
-    // ==================== 2. 查看某会话内存历史 ====================
+    // ==================== 2. 内存记忆：查看历史 ====================
+
     /**
-     * 测试：/ai/memory/history?conversationId=demo
+     * 演示：直接读 chatMemory，看某会话存了哪几条消息
+     * Postman：分组「4. 会话记忆」→ memory/history
+     * 示例请求：GET /ai/memory/history?conversationId=demo
+     *
+     * 用途：配合 memory/chat 验证"刚才的对话确实进了内存记忆"
      */
     @GetMapping("/ai/memory/history")
     public Map<String, Object> inMemoryHistory(@RequestParam(defaultValue = "demo") String conversationId) {
         return Map.of("conversationId", conversationId, "messages", chatMemory.get(conversationId));
     }
 
-    // ==================== 3. 清空某会话内存记忆 ====================
+    // ==================== 3. 内存记忆：清空会话 ====================
+
     /**
-     * 测试：/ai/memory/clear?conversationId=demo
+     * 演示：清空某会话的内存记忆，清完再问"我叫什么"AI 就不知道了
+     * Postman：分组「4. 会话记忆」→ memory/clear
+     * 示例请求：GET /ai/memory/clear?conversationId=demo
      */
     @GetMapping("/ai/memory/clear")
     public Map<String, Object> inMemoryClear(@RequestParam(defaultValue = "demo") String conversationId) {
@@ -82,12 +102,17 @@ public class MemoryController {
         return Map.of("conversationId", conversationId, "cleared", true);
     }
 
-    // ==================== 4. PG 向量库记忆（重启不丢） ====================
+    // ==================== 4. PG 向量库记忆：多轮对话（重启不丢） ====================
+
     /**
-     * 多轮对话，聊天记录存进 PG 向量表（vector_store），按 conversationId 隔离
-     * 下一轮先按 conversationId 从 PG 取回历史拼进上下文再回答，所以重启项目也不丢
-     * 测试：/ai/pgmemory/chat?conversationId=demo&prompt=我叫小明  →  /ai/pgmemory/chat?conversationId=demo&prompt=我叫什么
-     *       重启项目后再问一次，仍能记得（数据在 PG，不在内存）
+     * 演示：不用官方记忆 Advisor，聊天记录当"文档"存进 PG 向量表，自己管记忆
+     * Postman：分组「4. 会话记忆」→ pgmemory/chat
+     * 示例请求：GET /ai/pgmemory/chat?conversationId=demo&prompt=我叫小明
+     *          再调一次问"我叫什么" → AI 能答出；重启项目后再问，仍能答出（数据在 PG 不在内存）
+     *
+     * 流程：按 conversationId 过滤检索历史 → 按时间排序拼上下文 → 调模型 → 本轮 Q/A 写回向量表
+     * 关键点：metadata 存 role（user/assistant）+ time，检索时用 FilterExpression 过滤会话
+     * 场景：与 memory/chat 对比重启效果，这是"把向量库当记忆存储"的思路演示
      */
     @GetMapping("/ai/pgmemory/chat")
     public String pgChat(@RequestParam String prompt,
@@ -118,9 +143,14 @@ public class MemoryController {
         return answer;
     }
 
-    // ==================== 4.从 PG 向量表拿回某会话全部聊天记录 ====================
+    // ==================== 5. PG 向量库记忆：拿回全部聊天记录 ====================
+
     /**
-     * 测试：/ai/pgmemory/history?conversationId=demo
+     * 演示：从 PG 向量表按会话捞回全部记录（role/content/time），验证持久化确实生效
+     * Postman：分组「4. 会话记忆」→ pgmemory/history
+     * 示例请求：GET /ai/pgmemory/history?conversationId=demo
+     *
+     * 用途：重启项目后调这个，能看到重启前的聊天记录还在
      */
     @GetMapping("/ai/pgmemory/history")
     public List<Map<String, Object>> pgHistory(@RequestParam(defaultValue = "demo") String conversationId) {
@@ -135,10 +165,14 @@ public class MemoryController {
         )).toList();
     }
 
-    // ==================== 5.清空某会话在 PG 向量表的聊天记录 ====================
+    // ==================== 6. PG 向量库记忆：清空会话记录 ====================
+
     /**
-     * 清空某会话在 PG 向量表的聊天记录
-     * 测试：/ai/pgmemory/clear?conversationId=demo
+     * 演示：把某会话在 PG 向量表里的聊天记录全部删掉
+     * Postman：分组「4. 会话记忆」→ pgmemory/clear
+     * 示例请求：GET /ai/pgmemory/clear?conversationId=demo
+     *
+     * 流程：按 conversationId 检索出全部记录 → 取 id 批量 delete → 返回删除条数
      */
     @GetMapping("/ai/pgmemory/clear")
     public Map<String, Object> pgClear(@RequestParam(defaultValue = "demo") String conversationId) {
@@ -149,12 +183,17 @@ public class MemoryController {
         return Map.of("conversationId", conversationId, "deleted", docs.size());
     }
 
-    // ==================== 6. 企业级记忆：时间窗口 + 语义检索双路 ====================
+    // ==================== 7. 企业级记忆：时间窗口 + 语义检索双路 ====================
+
     /**
-     * 企业级多轮记忆：最近5条（时间窗口）+ 语义检索最相关3条（RAG 风格），合并去重
-     * 比纯内存/纯向量更稳：短期连续性 + 长期相关性都覆盖
-     * 测试：/ai/pgmemory/chatPro?conversationId=demo&prompt=...
-     * 注意：跨会话长期记忆去掉 conversationId filter 即可（全局向量库检索）
+     * 演示：企业级多轮记忆——最近 5 条（时间窗口）+ 语义检索最相关 3 条（RAG 风格），合并去重
+     * Postman：分组「4. 会话记忆」→ pgmemory/chatPro
+     * 示例请求：GET /ai/pgmemory/chatPro?conversationId=demo&prompt=我叫什么名字
+     *          （传一个只跟早期对话相关的 prompt，能看出语义路把时间窗口外的旧对话捞回来了）
+     *
+     * 流程：全量历史按时间排序 → 取最近 5 条 + 向量检索最相关 3 条 → 按 id 去重合并 → 拼上下文调模型 → 存回本轮
+     * 为什么这么写：纯时间窗口会丢"很久之前但相关"的记忆，纯语义检索会丢"刚刚说的连续上下文"，双路互补
+     * 注意：跨会话长期记忆去掉 conversationId 过滤即可（全局向量库检索）
      */
     @GetMapping("/ai/pgmemory/chatPro")
     public String pgChatPro(@RequestParam String prompt,
