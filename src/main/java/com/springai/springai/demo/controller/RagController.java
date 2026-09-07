@@ -28,7 +28,7 @@ import java.util.*;
  * 2. 用户提问 → 向量化 → 检索相似文档 → AI 基于文档回答
  *
  * 【Postman 对应】
- * 集合：demo.postman_collection.json（resources）
+ * POSTMAN：demo.postman_collection.json
  * 分组：「6 RAG」→ init-demo / upload / add-text / query / stats 共 5 个接口
  */
 @RestController

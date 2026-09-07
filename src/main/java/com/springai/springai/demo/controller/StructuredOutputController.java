@@ -26,7 +26,7 @@ import java.util.Map;
  * 3. .entities(Class)         -> 返回 List<Class>（多个对象）
  *
  * 【Postman 对应】
- * 集合：demo.postman_collection.json（resources）
+ * POSTMAN：demo.postman_collection.json
  * 分组：「7. Structured Output」→ extract / sql / analysis / sql-batch 共 4 个接口
  * （/ai/structured/entities 本类有实现，Postman 集合里没有对应条目）
  */

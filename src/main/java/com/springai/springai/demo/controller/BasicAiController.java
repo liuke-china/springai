@@ -13,7 +13,7 @@ import reactor.core.publisher.Flux;
  * 包含：ChatClient 最常用方法演示
  *
  * 【Postman 对应】
- * 集合：demo.postman_collection.json（resources）
+ * POSTMAN：demo.postman_collection.json
  * 分组：「1. 调用AI」→ basic / stream / response / role / entity / stream/role 共 6 个接口，顺序与本类编号一致
  */
 @RestController
