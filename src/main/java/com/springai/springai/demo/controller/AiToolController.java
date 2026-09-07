@@ -128,7 +128,7 @@ public class AiToolController {
 
 
     // ==================== 5. 外部工具：发送邮件 ====================
-    // Postman：分组「3. AI工具」→ email（Postman 里收件人用的 2369860456@qq.com）
+    // Postman：分组「3. AI工具」→ email（Postman 里收件人用的 zhangsan@example.com）
 
     /**
      * 演示：AI 调用邮件服务

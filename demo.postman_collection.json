@@ -564,7 +564,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{host}}/ai/tool/email?prompt=给2369860456@qq.com发邮件，主题测试，内容Hello",
+              "raw": "{{host}}/ai/tool/email?prompt=给zhangsan@example.com发邮件，主题测试，内容Hello",
               "host": [
                 "{{host}}"
               ],
@@ -576,7 +576,7 @@
               "query": [
                 {
                   "key": "prompt",
-                  "value": "给2369860456@qq.com发邮件，主题测试，内容Hello"
+                  "value": "给zhangsan@example.com发邮件，主题测试，内容Hello"
                 }
               ]
             }
