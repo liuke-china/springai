@@ -1,4 +1,4 @@
-package com.springai.springai.smalldemo.config;
+package com.springai.springai.demo.config;
 
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.VectorStore;

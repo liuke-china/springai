@@ -1,7 +1,7 @@
 package com.springai.springai.text2sql.strategy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.springai.springai.smalldemo.entity.SqlResult;
+import com.springai.springai.demo.entity.SqlResult;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Component;
 

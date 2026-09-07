@@ -1,7 +1,7 @@
 package com.springai.springai.text2sql;
 
-import com.springai.springai.smalldemo.entity.ReActExecutionResult;
-import com.springai.springai.smalldemo.entity.SqlResult;
+import com.springai.springai.demo.entity.ReActExecutionResult;
+import com.springai.springai.demo.entity.SqlResult;
 import com.springai.springai.text2sql.strategy.FewShotResult;
 import com.springai.springai.text2sql.strategy.GlossaryResult;
 import com.springai.springai.text2sql.strategy.KnowledgeAugmentResult;

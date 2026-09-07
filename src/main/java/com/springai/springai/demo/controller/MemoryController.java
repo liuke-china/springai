@@ -1,4 +1,4 @@
-package com.springai.springai.smalldemo.controller;
+package com.springai.springai.demo.controller;
 
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;

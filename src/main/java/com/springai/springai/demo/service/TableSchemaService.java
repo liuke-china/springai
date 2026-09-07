@@ -1,4 +1,4 @@
-package com.springai.springai.smalldemo.service;
+package com.springai.springai.demo.service;
 
 import com.springai.springai.text2sql.Exemplar;
 import com.springai.springai.text2sql.ForeignKey;

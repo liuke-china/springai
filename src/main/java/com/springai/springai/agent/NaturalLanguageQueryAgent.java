@@ -1,7 +1,7 @@
 package com.springai.springai.agent;
 
 import com.springai.springai.memory.tool.ImsDeviceTool;
-import com.springai.springai.smalldemo.service.TableSchemaService;
+import com.springai.springai.demo.service.TableSchemaService;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;

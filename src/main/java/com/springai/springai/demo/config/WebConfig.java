@@ -1,4 +1,4 @@
-package com.springai.springai.smalldemo.config;
+package com.springai.springai.demo.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;

@@ -1,8 +1,8 @@
 package com.springai.springai.text2sql;
 
 import com.alibaba.excel.EasyExcel;
-import com.springai.springai.smalldemo.entity.ReActExecutionResult;
-import com.springai.springai.smalldemo.entity.SqlResult;
+import com.springai.springai.demo.entity.ReActExecutionResult;
+import com.springai.springai.demo.entity.SqlResult;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;

@@ -1,6 +1,6 @@
 package com.springai.springai.eval;
 
-import com.springai.springai.smalldemo.entity.SqlResult;
+import com.springai.springai.demo.entity.SqlResult;
 import com.springai.springai.text2sql.TextToSqlOrchestrator;
 import com.springai.springai.text2sql.TextToSqlRequest;
 import com.springai.springai.text2sql.TextToSqlTrace;

@@ -1,9 +1,8 @@
 package com.springai.springai.agent;
 
 import com.springai.springai.memory.tool.ImsDeviceTool;
-import com.springai.springai.smalldemo.service.TableSchemaService;
+import com.springai.springai.demo.service.TableSchemaService;
 import org.junit.jupiter.api.Test;
-import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.List;

@@ -1,4 +1,4 @@
-package com.springai.springai.smalldemo.entity;
+package com.springai.springai.demo.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;

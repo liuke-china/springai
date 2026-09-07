@@ -1,4 +1,4 @@
-package com.springai.springai.smalldemo.config;
+package com.springai.springai.demo.config;
 
 import java.util.ArrayList;
 import java.util.List;

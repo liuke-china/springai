@@ -1,13 +1,12 @@
 package com.springai.springai.text2sql.strategy;
 
-import com.springai.springai.smalldemo.service.TableSchemaService;
+import com.springai.springai.demo.service.TableSchemaService;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.List;
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 

@@ -1,9 +1,9 @@
-package com.springai.springai.smalldemo.controller;
+package com.springai.springai.demo.controller;
 
-import com.springai.springai.smalldemo.entity.AnalysisResult;
-import com.springai.springai.smalldemo.entity.ExpenseInfo;
-import com.springai.springai.smalldemo.entity.ExtractedEntity;
-import com.springai.springai.smalldemo.entity.SqlResult;
+import com.springai.springai.demo.entity.AnalysisResult;
+import com.springai.springai.demo.entity.ExpenseInfo;
+import com.springai.springai.demo.entity.ExtractedEntity;
+import com.springai.springai.demo.entity.SqlResult;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.web.bind.annotation.*;

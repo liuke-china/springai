@@ -1,4 +1,4 @@
-package com.springai.springai.smalldemo.entity;
+package com.springai.springai.demo.entity;
 
 import lombok.Data;
 

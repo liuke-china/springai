@@ -1,9 +1,9 @@
-package com.springai.springai.smalldemo.controller;
+package com.springai.springai.demo.controller;
 
-import com.springai.springai.smalldemo.tools.DateTimeTools;
-import com.springai.springai.smalldemo.tools.EmailTools;
+import com.springai.springai.demo.tools.DateTimeTools;
+import com.springai.springai.demo.tools.EmailTools;
 
-import com.springai.springai.smalldemo.tools.WeatherTools;
+import com.springai.springai.demo.tools.WeatherTools;
 
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;

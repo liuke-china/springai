@@ -1,8 +1,8 @@
 package com.springai.springai.text2sql.strategy;
 
-import com.springai.springai.smalldemo.entity.ReActExecutionResult;
-import com.springai.springai.smalldemo.entity.RetryRecord;
-import com.springai.springai.smalldemo.entity.SqlResult;
+import com.springai.springai.demo.entity.ReActExecutionResult;
+import com.springai.springai.demo.entity.RetryRecord;
+import com.springai.springai.demo.entity.SqlResult;
 import com.springai.springai.text2sql.ExecutionGuard;
 import com.springai.springai.text2sql.TextToSqlRequest;
 import org.springframework.stereotype.Component;

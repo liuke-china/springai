@@ -1,6 +1,6 @@
 package com.springai.springai.text2sql;
 
-import com.springai.springai.smalldemo.service.TableSchemaService;
+import com.springai.springai.demo.service.TableSchemaService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.bind.annotation.*;
@@ -9,7 +9,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.List;
 import java.util.Map;
 
 /**

@@ -1,6 +1,6 @@
 package com.springai.springai.text2sql.strategy;
 
-import com.springai.springai.smalldemo.service.TableSchemaService;
+import com.springai.springai.demo.service.TableSchemaService;
 import org.springframework.ai.document.Document;
 import org.springframework.stereotype.Component;
 

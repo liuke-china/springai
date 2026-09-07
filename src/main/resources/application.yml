@@ -151,6 +151,11 @@ app:
       enabled: false
 
 management:
+  health:
+    # 邮件为可选功能，未配置账号密码时其健康探针会连不上 SMTP 导致整体 health=DOWN；
+    # 关掉它的健康检查，开箱即 UP（不影响发信功能本身）
+    mail:
+      enabled: false
   endpoints:
     web:
       exposure:
