@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
  *   → 4. Spring AI 自动执行工具方法 → 5. 将结果返回给 AI → 6. AI 生成最终回答
  *
  * 【Postman 对应】
- * 集合：Spring AI Full API.postman_collection.json（桌面）
+ * 集合：demo.postman_collection.json（resources）
  * 分组：「3. AI工具」→ time / weather / multi / role / email 共 5 个接口，顺序与本类编号一致
  */
 @RestController

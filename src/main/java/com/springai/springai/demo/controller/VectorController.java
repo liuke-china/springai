@@ -22,7 +22,7 @@ import java.util.Map;
  * 搜索时把查询文本也转向量，按余弦距离找最近的上 topK 条
  *
  * 【Postman 对应】
- * 集合：Spring AI Full API.postman_collection.json（桌面）
+ * 集合：demo.postman_collection.json（resources）
  * 分组：「5. Vector」→ add / batch-add / search 共 3 个接口
  * （delete/{id} 本类有实现，Postman 集合里没有对应条目）
  */

@@ -29,7 +29,7 @@ import java.util.Map;
  * 2) PG 向量库记忆：聊天记录存进 PostgreSQL 向量表，重启不丢，可从 PG 拿回
  *
  * 【Postman 对应】
- * 集合：Spring AI Full API.postman_collection.json（桌面）
+ * 集合：demo.postman_collection.json（resources）
  * 分组：「4. 会话记忆」共 7 个接口，按 memory（内存）→ pgmemory（PG 持久）两段排列
  *      记忆效果测法：chat 传同一 conversationId 先说"我叫小明"再问"我叫什么"
  */

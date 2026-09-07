@@ -26,7 +26,7 @@ import java.util.Map;
  * 模板字符串：String prompt = "请告诉我{city}的天气";
  *
  * 【Postman 对应】
- * 集合：Spring AI Full API.postman_collection.json（桌面）
+ * 集合：demo.postman_collection.json（resources）
  * 分组：「2. 提示词模板」→ basic / multi / default / list / system / stream / bean / summary / email-bean / if 共 10 个接口
  *      1-6 是"每次新建模板"的用法，7-9（bean/summary/email-bean）是"注入 @Bean 预定义模板"的推荐用法
  */

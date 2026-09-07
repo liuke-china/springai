@@ -23,7 +23,7 @@ import java.util.Map;
  * 7. JSON 提取 - 提取信息并输出 JSON
  *
  * 【Postman 对应】
- * 集合：Spring AI Full API.postman_collection.json（桌面）
+ * 集合：demo.postman_collection.json（resources）
  * 分组：「8. 提示词模板」→ sql / code-explain / analysis / customer / moderation / classify / json-extract 共 7 个接口
  * （7 个模板 Bean 全部定义在 PromptTemplateConfig，本类只负责注入和调用）
  */

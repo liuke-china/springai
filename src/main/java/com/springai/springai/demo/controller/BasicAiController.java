@@ -13,7 +13,7 @@ import reactor.core.publisher.Flux;
  * 包含：ChatClient 最常用方法演示
  *
  * 【Postman 对应】
- * 集合：Spring AI Full API.postman_collection.json（桌面）
+ * 集合：demo.postman_collection.json（resources）
  * 分组：「1. 调用AI」→ basic / stream / response / role / entity / stream/role 共 6 个接口，顺序与本类编号一致
  */
 @RestController
