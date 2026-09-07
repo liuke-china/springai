@@ -42,8 +42,10 @@ spring:
 
   ai:
     openai:
-      # MiniMax M3 通过 OpenAI 兼容协议接入；api-key 走环境变量 MINIMAX_API_KEY（Chat 与 Embedding 共用）
-      api-key: ${MINIMAX_API_KEY}
+      # MiniMax M3 通过 OpenAI 兼容协议接入；api-key 走环境变量 MINIMAX_API_KEY（Chat 与 Embedding 共用）。
+      # 默认值留空：未配置时解析为空串，会触发 EmbeddingConfig 的友好报错（而非晦涩的占位符异常）。
+      # 最省事的配置方式：把根目录 .env.example 复制为 .env 并填入你的 key（Spring Boot 3.2+ 会自动加载 .env，无需 export）。
+      api-key: ${MINIMAX_API_KEY:}
       base-url: https://api.minimax.chat
       chat:
         options:

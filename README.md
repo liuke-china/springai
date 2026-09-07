@@ -97,6 +97,22 @@ mvn spring-boot:run
 
 ---
 
+## 常见问题（排错）
+
+**Q：启动直接失败，报 `OpenAI API key must be set` 或 `EmbeddingConfig: MiniMax embedding 需要 api-key`？**
+A：忘了配 `MINIMAX_API_KEY`。本项目密钥全外部化，不在代码里。按"快速开始 → 3. 配置环境变量"把 `.env.example` 复制成 `.env` 并填入你的 Key 即可（Spring Boot 3.2+ 会自动加载根目录 `.env`，无需 `export`）。注意此 Key 是 **Chat 与 Embedding 共用**的必填项，没有它就起不来。
+
+**Q：接口返回 400 Bad Request（Tomcat 默认错误页）？**
+A：URL 里带了 Tomcat 默认拒绝的字符（如 `{}` `[]` `|` `<>`）。本项目已通过 `server.tomcat.relaxed-query-chars` 放行这些字符，正常浏览器调用没问题；但用 `curl` 测时要注意：①空格必须写成 `%20`；②`{}` 会被 curl 当成通配符，需加 `-g` 关闭 glob，或用 `--data-urlencode` 自动编码：
+```bash
+curl -G "http://localhost:8081/ai/enterprise/code-explain" --data-urlencode "code=public void test(){}"
+```
+
+**Q：启动报 `vector` 扩展相关错误 / RAG 接口查不到内容？**
+A：PG 上先执行一次 `CREATE EXTENSION IF NOT EXISTS vector;`（见"快速开始 → 2"）。扩展没启用，PGVector 表建不出来。
+
+---
+
 ## 第一层：RAG（检索增强生成）
 
 核心思路：让 LLM 回答前先检索外部资料，再把资料作为上下文生成答案，专治幻觉（hallucination）和知识过时。
