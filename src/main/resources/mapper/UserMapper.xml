@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.springai.springai.smalldemo.mapper.UserMapper">
+
+    <!-- 手写 SQL：根据关键字模糊搜索用户 -->
+    <select id="searchByKeyword" resultType="com.springai.springai.smalldemo.entity.User">
+        SELECT id, name, email, phone
+        FROM sys_user
+        WHERE name LIKE CONCAT('%', #{keyword}, '%')
+           OR email LIKE CONCAT('%', #{keyword}, '%')
+        ORDER BY id DESC
+    </select>
+
+</mapper>

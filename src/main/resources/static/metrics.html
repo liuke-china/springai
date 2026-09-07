@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG 可观测性仪表盘（Micrometer + Actuator）</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+               background: #0f172a; color: #e2e8f0; padding: 24px; }
+        h1 { font-size: 20px; margin-bottom: 4px; color: #f8fafc; }
+        .sub { color: #94a3b8; font-size: 13px; margin-bottom: 8px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+        .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 16px; }
+        .card .label { font-size: 12px; color: #94a3b8; margin-bottom: 8px; }
+        .card .value { font-size: 26px; font-weight: 700; color: #38bdf8; }
+        .card .unit { font-size: 12px; color: #64748b; margin-left: 4px; font-weight: 400; }
+        .section { margin-top: 24px; }
+        .section h2 { font-size: 15px; color: #cbd5e1; margin-bottom: 10px; border-left: 3px solid #38bdf8; padding-left: 8px; }
+        .biz .value { color: #f472b6; }
+        .health .value { font-size: 20px; }
+        table { width: 100%; border-collapse: collapse; background: #1e293b; border-radius: 10px; overflow: hidden; }
+        th, td { text-align: left; padding: 10px 14px; font-size: 13px; border-bottom: 1px solid #334155; }
+        th { background: #273449; color: #94a3b8; font-weight: 600; }
+        td.num { font-family: ui-monospace, Menlo, monospace; color: #fbbf24; }
+        .pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; }
+        .up { background: #064e3b; color: #34d399; }
+        .down { background: #7f1d1d; color: #fca5a5; }
+        .na { background: #334155; color: #94a3b8; }
+        .err { color: #f87171; }
+        #status { font-size: 12px; color: #64748b; margin-top: 14px; }
+    </style>
+</head>
+<body>
+    <h1>RAG 可观测性仪表盘</h1>
+    <div class="sub">数据来源：<code>GET /actuator/health</code> + <code>/actuator/metrics/{name}</code></div>
+    <div class="sub">分类：① <b>RAG 业务指标</b>（Micrometer 埋点：QPS / P99 延迟 / Token 用量 / 检索耗时）② <b>健康状态</b> ③ <b>通用 JVM/HTTP 指标</b>（Actuator 原生）· 每 3 秒刷新</div>
+
+    <div class="section biz">
+        <h2>RAG 业务指标（Micrometer 埋点）</h2>
+        <div class="grid" id="bizCards"></div>
+    </div>
+
+    <div class="section health">
+        <h2>健康状态</h2>
+        <div class="grid" id="healthCards"></div>
+    </div>
+
+    <div class="section">
+        <h2>通用 JVM / HTTP 指标（Actuator 原生）</h2>
+        <div class="grid" id="sysCards"></div>
+    </div>
+
+    <div class="section">
+        <h2>明细指标</h2>
+        <table>
+            <thead>
+                <tr><th>指标名</th><th>数值</th><th>说明</th></tr>
+            </thead>
+            <tbody id="rows"></tbody>
+        </table>
+    </div>
+
+    <div id="status">加载中…</div>
+
+<script>
+    const fmt = (n, d = 2) => (n == null || isNaN(n))
+        ? 'N/A'
+        : Number(n).toLocaleString('en-US', { maximumFractionDigits: d });
+
+    // 取某个 Actuator 指标在指定 statistic 下的值（meter 未产生数据时返回 404 → 容错为 null）
+    async function metric(name, stat = 'VALUE') {
+        try {
+            const r = await fetch('/actuator/metrics/' + name).then(r => r.json());
+            if (!r || !r.measurements) return null;
+            const m = r.measurements.find(x => x.statistic === stat);
+            return m ? m.value : null;
+        } catch (e) { return null; }
+    }
+
+    // Timer 取 P99 分位（Micrometer publishPercentiles 后 statistic 名形如 "p99"）；
+    // 若当前注册表未暴露 p99（如样本极少），回退用 MAX（最坏一次响应）作为近似。
+    async function timerP99(name) {
+        try {
+            const r = await fetch('/actuator/metrics/' + name).then(r => r.json());
+            if (!r || !r.measurements) return null;
+            let m = r.measurements.find(x => /p99|p0\.99/i.test(x.statistic));
+            if (!m) m = r.measurements.find(x => x.statistic === 'MAX');
+            return m ? m.value : null;   // 单位：秒
+        } catch (e) { return null; }
+    }
+
+    // 实时 QPS：Actuator 原生不提供 rate（那是 Prometheus rate() 的职责），前端用两次 COUNT 差分近似
+    let lastAskCount = null, lastAskTime = null;
+    function calcQps(count, nowMs) {
+        if (count == null) return null;
+        if (lastAskCount != null && count >= lastAskCount && lastAskTime != null) {
+            const dt = (nowMs - lastAskTime) / 1000;
+            if (dt > 0) {
+                const q = (count - lastAskCount) / dt;
+                lastAskCount = count; lastAskTime = nowMs;
+                return q;
+            }
+        }
+        lastAskCount = count; lastAskTime = nowMs;
+        return null;
+    }
+
+    function pill(status) {
+        if (status === 'UP') return '<span class="pill up">UP</span>';
+        if (status === 'DOWN') return '<span class="pill down">DOWN</span>';
+        return '<span class="pill na">' + (status || 'N/A') + '</span>';
+    }
+
+    function fmtUptime(sec) {
+        if (sec == null || isNaN(sec)) return 'N/A';
+        const h = Math.floor(sec / 3600);
+        const m = Math.floor((sec % 3600) / 60);
+        const s = Math.floor(sec % 60);
+        return h + 'h ' + m + 'm ' + s + 's';
+    }
+
+    function renderCards(elId, cards) {
+        document.getElementById(elId).innerHTML = cards.map(c => `
+            <div class="card">
+                <div class="label">${c.label}</div>
+                <div class="value">${c.raw ? c.html : (c.value + (c.unit ? `<span class="unit">${c.unit}</span>` : ''))}</div>
+            </div>`).join('');
+    }
+
+    async function load() {
+        try {
+            const health = await fetch('/actuator/health').then(r => r.json()).catch(() => ({ status: 'DOWN' }));
+            const now = Date.now();
+
+            // ===== ① RAG 业务指标（Micrometer 埋点，来自 com.springai.springai.metrics.RagMetrics）=====
+            const askCount = await metric('rag.ask.latency', 'COUNT');          // 累计问答数
+            const askP99   = await timerP99('rag.ask.latency');                // 端到端 P99（秒）
+            const retP99   = await timerP99('rag.retrieval.latency');          // 检索 P99（秒）
+            const tokIn    = await metric('rag.token.input', 'COUNT');         // 累计输入 token
+            const tokOut   = await metric('rag.token.output', 'COUNT');        // 累计输出 token
+            const qps      = calcQps(askCount, now);
+
+            renderCards('bizCards', [
+                { label: '累计问答数', value: fmt(askCount, 0), unit: '次' },
+                { label: '实时 QPS',   value: qps == null ? 'N/A' : fmt(qps, 2), unit: 'req/s' },
+                { label: '端到端 P99', value: askP99 == null ? 'N/A' : fmt(askP99 * 1000, 1), unit: 'ms' },
+                { label: '检索 P99',   value: retP99 == null ? 'N/A' : fmt(retP99 * 1000, 1), unit: 'ms' },
+                { label: '输入 Token（累计）', value: fmt(tokIn, 0), unit: '个' },
+                { label: '输出 Token（累计）', value: fmt(tokOut, 0), unit: '个' }
+            ]);
+
+            // ===== ② 健康状态（/actuator/health，含自定义 rag 组件）=====
+            const dbStatus  = (health.components && health.components.db)  ? health.components.db.status  : 'N/A';
+            const ragStatus = (health.components && health.components.rag) ? health.components.rag.status : 'N/A';
+            renderCards('healthCards', [
+                { label: '应用',   raw: true, html: pill(health.status) },
+                { label: '数据库', raw: true, html: pill(dbStatus) },
+                { label: 'RAG 存储', raw: true, html: pill(ragStatus) }
+            ]);
+
+            // ===== ③ 通用 JVM / HTTP 指标（Actuator 原生）=====
+            const reqCount = await metric('http.server.requests', 'COUNT');
+            const reqTotal = await metric('http.server.requests', 'TOTAL_TIME');   // 秒
+            const reqMax   = await metric('http.server.requests', 'MAX');         // 秒
+            const jvmMem   = await metric('jvm.memory.used', 'VALUE');            // 字节
+            const uptime   = await metric('process.uptime', 'VALUE');            // 秒
+            const threads  = await metric('jvm.threads.live', 'VALUE');
+            const cpu      = await metric('system.cpu.usage', 'VALUE');
+            const avgMs = (reqCount && reqTotal && reqCount > 0) ? (reqTotal / reqCount * 1000) : null;
+            const maxMs = (reqMax != null) ? reqMax * 1000 : null;
+            renderCards('sysCards', [
+                { label: '累计 HTTP 请求', value: fmt(reqCount, 0), unit: '次' },
+                { label: '平均响应', value: fmt(avgMs, 1), unit: 'ms' },
+                { label: 'JVM 内存', value: fmt(jvmMem ? jvmMem / 1048576 : null, 0), unit: 'MB' },
+                { label: '运行时长', value: fmtUptime(uptime), unit: '' }
+            ]);
+
+            // ===== 明细表 =====
+            const rows = [
+                ['rag.ask.latency（P99 端到端）', fmt(askP99 == null ? null : askP99 * 1000, 1) + ' ms', 'RAG 问答最慢 1% 请求延迟（Timer.publishPercentiles）'],
+                ['rag.retrieval.latency（P99 检索）', fmt(retP99 == null ? null : retP99 * 1000, 1) + ' ms', '向量召回+BM25+RRF+rerank 阶段耗时'],
+                ['rag.token.input（输入 Token）', fmt(tokIn, 0), '累计 = LLM 服务商 输入计费量'],
+                ['rag.token.output（输出 Token）', fmt(tokOut, 0), '累计 = LLM 服务商 输出计费量'],
+                ['实时 QPS', qps == null ? 'N/A' : fmt(qps, 2) + ' req/s', '前端差分算（Actuator 无原生 rate）'],
+                ['http.server.requests（最大响应）', fmt(maxMs, 1) + ' ms', '单 HTTP 请求最慢一次'],
+                ['jvm.threads.live（活跃线程）', fmt(threads, 0), 'Tomcat/JVM 当前线程数'],
+                ['system.cpu.usage（系统 CPU）', fmt(cpu != null ? cpu * 100 : null, 1) + ' %', '0~100，N/A=未暴露'],
+                ['process.uptime（进程存活）', fmtUptime(uptime), '含应用启动至今']
+            ];
+            document.getElementById('rows').innerHTML = rows.map(r => `
+                <tr><td>${r[0]}</td><td><span class="num">${r[1]}</span></td><td style="color:#94a3b8">${r[2]}</td></tr>`).join('');
+
+            document.getElementById('status').textContent =
+                '最近刷新：' + new Date().toLocaleTimeString() + ' · 数据每 3s 拉取一次 · 来源 /actuator/*';
+        } catch (e) {
+            document.getElementById('status').innerHTML =
+                '<span class="err">拉取失败：' + e.message + '</span> —— 确认后端已启动且 /actuator/health 可访问';
+        }
+    }
+
+    load();
+    setInterval(load, 3000);
+</script>
+</body>
+</html>

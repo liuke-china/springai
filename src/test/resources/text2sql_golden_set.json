@@ -1,0 +1,9 @@
+[
+  {
+    "id": "G2",
+    "question": "状态为 12 的设备有多少台？",
+    "goldSql": "SELECT count(*) AS cnt FROM device WHERE state = '12'",
+    "category": "filter",
+    "difficulty": "easy"
+  }
+]

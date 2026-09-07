@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IMS Text-to-SQL 助手</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, "Microsoft YaHei", sans-serif; max-width: 1000px; margin: 24px auto; padding: 0 16px;
+         background: #f7f8fa; color: #1f2329; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: #8a919f; font-size: 13px; margin-bottom: 16px; }
+  .card { background: #fff; border: 1px solid #e5e6eb; border-radius: 8px; padding: 16px; margin-bottom: 14px; }
+  textarea { width: 100%; height: 70px; padding: 10px; border: 1px solid #d0d3d9; border-radius: 6px; font-size: 14px; resize: vertical; }
+  .chips { margin: 10px 0; display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { background: #eef3ff; color: #2b5fd9; border: 1px solid #c9d8ff; border-radius: 14px; padding: 4px 12px; font-size: 13px; cursor: pointer; }
+  .chip:hover { background: #dde7ff; }
+  .opts { display: flex; flex-wrap: wrap; gap: 16px; margin: 10px 0; font-size: 14px; }
+  .opts label { cursor: pointer; user-select: none; }
+  button.go { background: #2b5fd9; color: #fff; border: none; border-radius: 6px; padding: 9px 22px; font-size: 15px; cursor: pointer; }
+  button.go:hover { background: #234fb8; }
+  button.go:disabled { background: #a9b8e0; cursor: not-allowed; }
+  #status { margin-left: 12px; font-size: 13px; color: #8a919f; }
+  pre.sql { background: #f3f4f6; border: 1px solid #e5e6eb; border-radius: 6px; padding: 12px; overflow: auto; font-family: Consolas, monospace; font-size: 13px; white-space: pre-wrap; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; margin-top: 8px; }
+  th, td { border: 1px solid #e5e6eb; padding: 6px 10px; text-align: left; }
+  th { background: #f3f4f6; font-weight: 600; }
+  .tag { display: inline-block; padding: 2px 9px; border-radius: 10px; font-size: 12px; margin-right: 6px; }
+  .tag.ok { background: #e6f7ec; color: #1a8245; }
+  .tag.warn { background: #fff4e0; color: #b25b00; }
+  .tag.err { background: #fdecea; color: #c0392b; }
+  .tag.cache { background: #efeafc; color: #6b3fd1; }
+  .sec-title { font-size: 14px; font-weight: 600; margin: 0 0 8px; color: #2b2f36; }
+  .summary { background: #fff8e6; border-left: 3px solid #f0c000; padding: 10px 12px; border-radius: 4px; font-size: 14px; line-height: 1.6; }
+  .muted { color: #8a919f; font-size: 13px; }
+  .metric { background: #f3f4f6; border-radius: 6px; padding: 8px 10px; margin-bottom: 6px; font-size: 13px; }
+  .empty { color: #8a919f; font-size: 13px; padding: 8px 0; }
+  code { background: #eef0f3; padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+</style>
+</head>
+<body>
+  <h1>🗄️ IMS Text-to-SQL 助手</h1>
+  <div class="sub">用自然语言查数据库 · 企业级流水线（业务口径 / 查询计划 / 安全护栏 / EXPLAIN 预检 / 结果摘要）</div>
+
+  <div class="card">
+    <textarea id="question" placeholder="例如：各车间设备总数分别是多少？"></textarea>
+    <div class="chips" id="chips"></div>
+    <div class="opts">
+      <label><input type="checkbox" id="bm" checked> 业务口径</label>
+      <label><input type="checkbox" id="qp"> 查询计划</label>
+      <label><input type="checkbox" id="sm"> 结果摘要</label>
+      <label><input type="checkbox" id="sc"> 自纠错</label>
+    </div>
+    <div>
+      <button class="go" id="go" onclick="run()">生成并查询</button>
+      <span id="status"></span>
+    </div>
+  </div>
+
+  <div class="card" id="sqlCard" style="display:none">
+    <div class="sec-title">生成的 SQL <span id="riskTag"></span> <span id="cacheTag"></span></div>
+    <pre class="sql" id="sql"></pre>
+  </div>
+
+  <div class="card" id="resultCard" style="display:none">
+    <div class="sec-title">查询结果 <span id="errTag"></span> <span id="safetyTag"></span></div>
+    <div id="tableArea"></div>
+  </div>
+
+  <div class="card" id="summaryCard" style="display:none">
+    <div class="sec-title">结果摘要（自然语言）</div>
+    <div class="summary" id="summary"></div>
+  </div>
+
+  <div class="card" id="detailCard" style="display:none">
+    <div class="sec-title">企业级明细（面试官最爱看）</div>
+    <div id="metricsArea"></div>
+    <div id="planArea" style="margin-top:10px"></div>
+  </div>
+
+<script>
+const API = "http://localhost:8081/ai/sql/generate-detail";
+
+// 快捷问题（点击直接填入输入框）
+const SUGGESTIONS = [
+  "各车间设备总数分别是多少",
+  "本月各产线 OEE 利用率",
+  "停机时长 TOP10 设备",
+  "待机状态的设备有哪些",
+  "本周生产效率相比上周变化"
+];
+const chipsEl = document.getElementById("chips");
+SUGGESTIONS.forEach(t => {
+  const c = document.createElement("span");
+  c.className = "chip"; c.textContent = t;
+  c.onclick = () => document.getElementById("question").value = t;
+  chipsEl.appendChild(c);
+});
+
+async function run() {
+  const q = document.getElementById("question").value.trim();
+  if (!q) { setStatus("请先输入问题", "warn"); return; }
+  const btn = document.getElementById("go");
+  btn.disabled = true; setStatus("正在生成 SQL 并执行…");
+  hideCards();
+
+  const body = {
+    question: q,
+    useBusinessMetric: document.getElementById("bm").checked ? "true" : "false",
+    useQueryPlan: document.getElementById("qp").checked ? "true" : "false",
+    summarize: document.getElementById("sm").checked ? "true" : "false",
+    useSelfCorrection: document.getElementById("sc").checked ? "true" : "false"
+  };
+
+  try {
+    const res = await fetch(API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (!res.ok) { setStatus("请求失败：" + JSON.stringify(data), "err"); return; }
+    render(data);
+    setStatus(data.fromCache ? "✔ 命中缓存（未打 LLM/DB）" : "✔ 完成", "ok");
+  } catch (e) {
+    setStatus("出错了：" + e.message + "（服务是否启动在 8081？）", "err");
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function render(d) {
+  // SQL + 风险等级
+  const sr = d.sqlResult || {};
+  show("sqlCard");
+  document.getElementById("sql").textContent = sr.sql || "（无 SQL）";
+  const risk = sr.riskLevel;
+  document.getElementById("riskTag").innerHTML = risk
+    ? `<span class="tag ${risk === 'SAFE' ? 'ok' : risk === 'WARNING' ? 'warn' : 'err'}">风险:${risk}</span>` : "";
+  document.getElementById("cacheTag").innerHTML = d.fromCache
+    ? `<span class="tag cache">缓存命中</span>` : "";
+
+  // 结果表格
+  const errType = d.errorType;
+  const errTag = document.getElementById("errTag");
+  const safetyTag = document.getElementById("safetyTag");
+  errTag.innerHTML = errType && errType !== "NONE"
+    ? `<span class="tag ${errType === 'EMPTY_RESULT' ? 'warn' : 'err'}">${errType}</span>` : "";
+  const safety = d.safety || {};
+  safetyTag.innerHTML = safety.blocked
+    ? `<span class="tag err">安全拦截</span>`
+    : (safety.riskLevel ? `<span class="tag ${safety.riskLevel === 'SAFE' ? 'ok' : 'warn'}">护栏:${safety.riskLevel}</span>` : "");
+
+  const rows = d.data || [];
+  const ta = document.getElementById("tableArea");
+  if (rows.length === 0) {
+    ta.innerHTML = `<div class="empty">无数据行` +
+      (errType === "EMPTY_RESULT" ? "（查询成功但结果为空，可能业务本来就没数据）" : "") +
+      (errType === "SQL_PRECHECK_FAILED" ? "（EXPLAIN 预检失败，SQL 未执行）" : "") +
+      (errType === "SQL_EXECUTION_FAILED" ? "（执行异常：" + (sr.note || "") + "）" : "") + `</div>`;
+    show("resultCard");
+  } else {
+    const cols = Object.keys(rows[0]);
+    let html = "<table><thead><tr>" + cols.map(c => `<th>${esc(c)}</th>`).join("") + "</tr></thead><tbody>";
+    rows.forEach(r => {
+      html += "<tr>" + cols.map(c => `<td>${esc(r[c])}</td>`).join("") + "</tr>";
+    });
+    html += "</tbody></table>";
+    ta.innerHTML = html + `<div class="muted" style="margin-top:6px">共 ${rows.length} 行</div>`;
+    show("resultCard");
+  }
+
+  // 摘要
+  if (d.summary) {
+    document.getElementById("summary").textContent = d.summary;
+    show("summaryCard");
+  }
+
+  // 明细：业务口径 + 查询计划
+  const metrics = d.matchedMetrics || [];
+  const ma = document.getElementById("metricsArea");
+  if (metrics.length) {
+    ma.innerHTML = `<div class="sec-title" style="font-size:13px;margin-bottom:6px">命中业务口径（标准算法）</div>` +
+      metrics.map(m => `<div class="metric">📐 <b>${esc(m.metric || m.name || "")}</b>：${esc(m.expression || m.definition || "")}</div>`).join("");
+  } else { ma.innerHTML = ""; }
+  const plan = d.queryPlan;
+  const pa = document.getElementById("planArea");
+  if (plan) {
+    pa.innerHTML = `<div class="sec-title" style="font-size:13px;margin-bottom:6px">查询计划（Planner 草稿）</div>` +
+      `<pre class="sql">${esc(JSON.stringify(plan, null, 2))}</pre>`;
+  } else { pa.innerHTML = ""; }
+  if (metrics.length || plan) show("detailCard");
+}
+
+function esc(v) {
+  if (v === null || v === undefined) return "";
+  return String(v).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+function setStatus(msg, kind) {
+  const el = document.getElementById("status");
+  el.textContent = msg;
+  el.style.color = kind === "ok" ? "#1a8245" : kind === "warn" ? "#b25b00" : kind === "err" ? "#c0392b" : "#8a919f";
+}
+function show(id) { document.getElementById(id).style.display = "block"; }
+function hideCards() { ["sqlCard","resultCard","summaryCard","detailCard"].forEach(i => document.getElementById(i).style.display = "none"); }
+</script>
+</body>
+</html>

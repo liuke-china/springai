@@ -1,0 +1,68 @@
+HELP.md
+target/
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbproject/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+
+# ============================================================
+# 发布到公开仓库时忽略（含密钥 / 内部资料 / 编译产物 / 临时文件）
+# 注意：根目录条目必须加前导 / 锚定，否则 springai/ 会误伤 com/springai 源码包
+# ============================================================
+
+# 环境变量（真实密钥放这里，永不进仓库）
+.env
+
+# 编译产物（全局，忽略所有 .class）
+*.class
+
+# 内部资料 / 交接文档（含 IMS 逆向、数据字典、内部 IP 等，禁止外泄）
+/document/
+交接.txt
+PROMPT_ASSET_INVENTORY.md
+springai-rag-sample.txt
+
+# 内部脚本与工具（IMS 数据校验、nginx 配置、postman、测试页）
+/scripts/validate/
+/postman/
+test-ims-ask.html
+text2sql/nginx-locations.conf
+
+# 误提交到根目录的散落目录 / 临时产物（前导 / 锚定到根，避免误伤源码包名）
+/org/
+/springai/
+/eval*/
+/log/
+/tmp_*
+
+# AI 工具本地配置
+/.codebuddy/
+/.claude/

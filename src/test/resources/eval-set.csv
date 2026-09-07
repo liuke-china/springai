@@ -1,0 +1,21 @@
+id,question,expected_tool,expected_answer_keywords,category
+1,车间一共有多少台设备,countDevicesByState,设备;台;总数,基础统计
+2,各状态设备分别有几台,countDevicesByState,加工中;停机;连接不上,状态分布
+3,加工中的设备有几台,countDevicesByState,加工中;台,单状态统计
+4,加工中的设备叫叫什么,listDevicesByState,CNC;加工中,列表
+5,显示所有设备名称,queryDevices,设备名,全量
+6,3 号设备状态怎么样,queryDevices,设备名;stateCn,按名查
+7,连接不上的设备有哪几台,listDevicesByState,连接不上,失联设备
+8,最近一周新加了哪些设备,queryDevices,设备名;createTime,时间过滤
+9,最新添加的设备是哪一台,queryDevices,最新;createTime;设备名,单条结果
+10,最近一个月加的几台设备叫什么,queryDevices,设备名;月;createTime,时间范围
+11,设备识别码是 Taikan 402601316 的是哪台,queryDevices,识别码;设备名,按识别码
+12,加工中和停机各几台,listDevicesByState,加工中;停机,组合查询
+13,停机的设备叫叫什么,listDevicesByState,设备名;停机,状态清单
+14,在 3 天内新增的停机设备,queryDevices,停机;时间,多维组合
+15,3D1F 区域有多少台设备,NULL,区域;做不到,找缺口
+16,加工中的设备最近一周报过警吗,NULL,做不到,找缺口
+17,帮我看看设备为什么停机,NULL,做不到,找缺口
+18,设备识别码 X 是什么状态,queryDevices,stateCn;识别码,stateCn翻译
+19,加工中的设备多还是停机的多,countDevicesByState,加工中;停机;比较,推理
+20,帮我统计一下,countDevicesByState,设备;统计,模糊匹配

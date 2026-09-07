@@ -1,0 +1,162 @@
+# 开发环境配置
+server:
+  # 服务器的HTTP端口，默认为8080
+  port: 8081
+  tomcat:
+    # 放行 URL 查询串里的特殊字符（代码/SQL 模板接口常带 {}[]|<>\" 等）。
+    # 不配的话 Tomcat 默认拒绝这些字符，GET 请求直接返回 400 Bad Request（请求还没进 Controller）。
+    relaxed-query-chars: ["{", "}", "[", "]", "|", "^", "`", "<", ">", "\""]
+    relaxed-path-chars: ["{", "}", "[", "]", "|", "^", "`", "<", ">", "\""]
+spring:
+  main:
+    allow-bean-definition-overriding: true
+  autoconfigure:
+    # ⚠️ 必须挂在 spring.autoconfigure.exclude（与 application 平级），之前误缩进到 application 下被忽略
+    exclude:
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiEmbeddingAutoConfiguration  # 自定义 MiniMax embedding 接管（排除 OpenAiEmbeddingModel 自动装配，避免它用 MiniMax 聊天 base-url 建 embedding bean 被 400 拒）
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration  # 关掉 Spring Security 默认"内存用户+随机密码"，本项目用 API Key 鉴权，不需要默认账号
+  application:
+    name: spring-ai-demo
+
+  # PostgreSQL 数据源配置
+  datasource:
+    # 默认写入数据源：PGVector、聊天记忆、审计、知识刷新和初始化继续使用它
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/postgres}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:123456}
+    driver-class-name: org.postgresql.Driver
+
+  # 邮件配置（163邮箱示例，真实账号密码走环境变量，勿明文）
+  mail:
+    host: smtp.163.com
+    port: 465
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: true
+          ssl:
+            enable: true
+
+  ai:
+    openai:
+      # MiniMax M3 通过 OpenAI 兼容协议接入；api-key 走环境变量 MINIMAX_API_KEY（Chat 与 Embedding 共用）
+      api-key: ${MINIMAX_API_KEY}
+      base-url: https://api.minimax.chat
+      chat:
+        options:
+          # ✅ 当前生效模型 = MiniMax-M3（MiniMax 官方 295B 推理模型）
+          model: MiniMax-M3
+          temperature: 0.3
+          max-tokens: 4096
+      retry:
+        max-attempts: 3
+        initial-interval: 2s
+        multiplier: 2.0
+        max-interval: 10s
+
+    chat:
+      memory:
+        repository:
+          jdbc:
+            initialize-schema: always
+
+    # 可选：保留 PGVector 向量数据库配置（如果用RAG）
+    vectorstore:
+      pgvector:
+        initialize-schema: true
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+        dimensions: 1536   # 2026-09-02 改 1536 匹配 MiniMax embo-01（原 bge-m3 1024 已弃用）；旧 1024 维 PGVector 表须 DROP 后由 initialize-schema 重建
+    mcp:
+      server:
+        enabled: false                      # 生产关闭 MCP Server 暴露面（无鉴权时等于公开所有工具）；需要时再开
+        name: springai-mcp-server           # 暴露给客户端的 server 名称
+        version: 1.0.0
+        type: SYNC                         # WebMVC 是同步 Servlet，用 SYNC（可选 ASYNC）
+        protocol: STREAMABLE               # 传输协议：STREAMABLE（现代 MCP 标准）/ SSE / STATELESS
+        streamable-http:
+          mcp-endpoint: /mcp              # MCP 协议端点；客户端连 http://localhost:8081/mcp
+  mybatis-plus:
+    mapper-locations: classpath:mapper/*.xml
+    configuration:
+      log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+      map-underscore-to-camel-case: true
+
+  # 日志配置
+  logging:
+    level:
+      root: INFO
+      com.springai: DEBUG
+      org.springframework.web: DEBUG
+      org.springframework.ai: DEBUG
+
+  # ============================================================
+  # RAG 配置（检索增强生成）
+  # ============================================================
+  rag:
+    document:
+      path: ./documents
+    default-topk: 3
+    similarity-threshold: 0.5
+    # RAG 企业检索增强配置（QueryAugmenter 读取）
+    enterprise:
+      hyde-mode: conditional       # conditional=弱召回才触发HyDE; off=永不触发(最快); always=每次都做(仅实验)
+      hyde-threshold: 0.45         # 余弦距离>此值(即召回偏弱)才触发 HyDE 兜底增强
+      ef-search: 100
+      chunk-size: 500               # 单块目标字符数（配合 overlap=150 让边界知识点进两块）
+      overlap: 150                  # 相邻块重叠字符数（= chunkSize 一半）
+      rewrite-enabled: true        # 仅多轮有 history 时改写,单轮首问自动跳过(省一次LLM)
+
+# ============================================================
+  # IMS 项目配置（可选；springai 调 IMS 的接口地址和 token，需内网权限，外部用户不填也能跑通用 AI 能力）
+  # ============================================================
+  ims:
+    base-url: ${IMS_BASE_URL:http://localhost:8080}
+    token: ${IMS_TOKEN:}
+
+  text-to-sql:
+    default-topk: 10
+
+# ============================================================
+# MCP Client 演示开关（对应 McpClientDemoController）
+# 默认关：不破坏你现有单实例运行。开启 Client 演示时改 true，
+# 并取消 application.yml 中 mcp.client 段的注释。
+# ============================================================
+app:
+  auth:
+    enabled: false
+  security:
+    # 是否拦截恶意提示注入；灰度期可改 false（仅日志告警不拦截）
+    block-malicious: ${APP_SECURITY_BLOCK_MALICIOUS:true}
+    # 安全 Advisor 开关（防提示词注入 + 输入清洗）。
+    # 默认 true（缺省即开，满足上生产前安全包默认开）；设 false 可临时关闭。
+    advisor:
+      enabled: ${APP_SECURITY_ADVISOR_ENABLED:true}
+    readonly-db:
+      # 开启后，Text-to-SQL 查询和 EXPLAIN 使用 ims_readonly；默认 spring.datasource 仍是写入账号
+      enabled: ${READONLY_DB_ENABLED:true}
+      url: ${READONLY_DB_URL:${spring.datasource.url}}
+      username: ${READONLY_DB_USERNAME:ims_readonly}
+      password: ${READONLY_DB_PASSWORD:123456}
+  # 运维/知识库管理端点（/ai/sql/refresh-*、/audit、/schema-snapshots、/suggestions）默认关闭：
+  # 这些是内部运维能力，无鉴权时能被用来投毒知识库 / 泄露审计，生产不暴露。
+  # 需要运维时设 true（建议仅内网 + 鉴权后）：环境变量 APP_OPS_ENDPOINTS_ENABLED=true
+  ops-endpoints:
+    enabled: ${APP_OPS_ENDPOINTS_ENABLED:false}
+  mcp:
+    client-demo:
+      enabled: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+    metrics:
+      enabled: true

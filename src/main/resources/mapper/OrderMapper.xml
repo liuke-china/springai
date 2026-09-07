@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.springai.springai.smalldemo.mapper.OrderMapper">
+
+    <!-- 手写 SQL：多表 JOIN 查询用户及其订单 -->
+    <select id="selectOrdersWithUser" resultType="com.springai.springai.smalldemo.entity.Order">
+        SELECT o.id, o.product_name, o.amount, o.user_id
+        FROM sys_order o
+        LEFT JOIN sys_user u ON o.user_id = u.id
+        WHERE o.user_id = #{userId}
+        ORDER BY o.id DESC
+    </select>
+
+</mapper>
