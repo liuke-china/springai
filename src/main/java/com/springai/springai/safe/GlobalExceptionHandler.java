@@ -1,4 +1,4 @@
-package com.springai.springai.advice;
+package com.springai.springai.safe;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
